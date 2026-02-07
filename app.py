@@ -22,7 +22,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-m
 
 db.init_app(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Пожалуйста, войдите в аккаунт'
@@ -691,4 +691,5 @@ def handle_typing(data):
 
 
 if __name__ == '__main__':
+
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
