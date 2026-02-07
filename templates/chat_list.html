@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Сообщения — CodeLearn{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>💬 Сообщения</h1>
+
+    {% if chats %}
+    <div class="chat-list">
+        {% for c in chats %}
+        <a href="{{ url_for('chat', user_id=c.user.id) }}"
+           class="chat-list-item {% if c.unread > 0 %}chat-unread{% endif %}">
+            <div class="avatar-sm {% if c.is_online %}avatar-online{% endif %}">
+                {{ c.user.username[0].upper() }}
+            </div>
+            <div class="chat-list-info">
+                <div class="chat-list-name">
+                    {{ c.user.username }}
+                    {% if c.unread > 0 %}
+                        <span class="chat-unread-badge">{{ c.unread }}</span>
+                    {% endif %}
+                </div>
+                <div class="chat-list-last">
+                    {% if c.last_message %}
+                        {% if c.last_message.sender_id == current_user.id %}Вы: {% endif %}
+                        {{ c.last_message.content[:50] }}{% if c.last_message.content|length > 50 %}...{% endif %}
+                    {% else %}
+                        Нет сообщений
+                    {% endif %}
+                </div>
+            </div>
+            <div class="chat-list-time">
+                {% if c.last_message %}
+                    {{ c.last_message.created_at.strftime('%H:%M') }}
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h3>Нет сообщений</h3>
+        <p>Добавьте друзей чтобы начать общение</p>
+        <a href="{{ url_for('friends') }}" class="btn btn-primary">👥 Друзья</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Тест: {{ lesson.title }} — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="lesson-layout">
+
+        <div class="lesson-sidebar">
+            <h3>{{ course.icon }} {{ course.title }}</h3>
+            <div class="sidebar-mode">
+                <span class="mode-badge mode-test">🧪 Тестирование</span>
+            </div>
+            <ul class="lesson-list">
+                {% for l in course.lessons %}
+                <li>
+                    <a href="{{ url_for('test', course_id=course.id, lesson_index=loop.index0) }}"
+                       class="{% if loop.index0 == lesson_index %}active{% endif %} {% if loop.index0 in passed_list %}completed{% endif %}">
+                        <span class="lesson-status {% if loop.index0 in passed_list %}done{% elif loop.index0 == lesson_index %}current{% endif %}">
+                            {% if loop.index0 in passed_list %}✓{% else %}{{ loop.index }}{% endif %}
+                        </span>
+                        {{ l.title }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div class="sidebar-actions">
+                <a href="{{ url_for('learn', course_id=course.id, lesson_index=lesson_index) }}"
+                   class="btn btn-outline btn-block btn-sm">📖 Вернуться к теории</a>
+            </div>
+        </div>
+
+        <div class="lesson-content">
+            <div class="lesson-breadcrumb">
+                {{ course.icon }} {{ course.title }} → Тест {{ lesson_index + 1 }} из {{ total_lessons }}
+                {% if lesson_index in passed_list %}
+                    <span style="color: var(--success);">✅ Пройден</span>
+                {% endif %}
+            </div>
+
+            <h2>🧪 Тест: {{ lesson.title }}</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">
+                Ответьте на все вопросы правильно, чтобы пройти тест
+            </p>
+
+            {% if result == 'pass' %}
+                <div class="result result-correct" style="margin-bottom: 2rem;">
+                    ✅ Тест пройден! Результат: {{ score }}/{{ total_questions }}
+                </div>
+            {% elif result == 'fail' %}
+                <div class="result result-wrong" style="margin-bottom: 2rem;">
+                    ❌ Не пройден: {{ score }}/{{ total_questions }}. Нужно ответить на все правильно!
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                {% for q in lesson.questions %}
+                {% set qi = loop.index0 %}
+                <div class="question-card {% if result %}{% if answer_results.get(qi) %}question-correct{% else %}question-wrong{% endif %}{% endif %}">
+                    <div class="question-number">Вопрос {{ loop.index }}</div>
+                    <div class="question-text">{{ q.question }}</div>
+
+                    <div class="options-list">
+                        {% for option in q.options %}
+                        {% set is_selected = (user_answers.get(qi, '') == option) %}
+                        {% set is_correct_option = (option == q.answer) %}
+                        <label class="option-label {% if result %}{% if is_correct_option %}option-correct{% elif is_selected and not is_correct_option %}option-wrong{% endif %}{% endif %}">
+                            <input type="radio"
+                                   name="q{{ qi }}"
+                                   value="{{ option }}"
+                                   {% if is_selected %}checked{% endif %}
+                                   {% if result %}disabled{% endif %}
+                                   required>
+                            <span class="option-radio"></span>
+                            <span class="option-text">{{ option }}</span>
+
+                            {% if result %}
+                                {% if is_correct_option %}
+                                    <span style="margin-left: auto; color: var(--success);">✓</span>
+                                {% elif is_selected and not is_correct_option %}
+                                    <span style="margin-left: auto; color: var(--error);">✗</span>
+                                {% endif %}
+                            {% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    {% if result and not answer_results.get(qi) %}
+                        <div class="correct-answer">
+                            Правильный ответ: <strong>{{ q.answer }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                {% if not result %}
+                    <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                        Проверить ответы
+                    </button>
+                {% elif result == 'fail' %}
+                    <a href="{{ url_for('test', course_id=course.id, lesson_index=lesson_index) }}"
+                       class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                        Попробовать ещё раз
+                    </a>
+                    <a href="{{ url_for('learn', course_id=course.id, lesson_index=lesson_index) }}"
+                       class="btn btn-outline btn-block" style="margin-top: 0.5rem;">
+                        📖 Повторить теорию
+                    </a>
+                {% elif result == 'pass' %}
+                    <div class="lesson-nav" style="margin-top: 1.5rem; border: none; padding: 0;">
+                        {% if lesson_index < total_lessons - 1 %}
+                            <a href="{{ url_for('learn', course_id=course.id, lesson_index=lesson_index + 1) }}"
+                               class="btn btn-primary">📖 Следующий урок →</a>
+                            <a href="{{ url_for('test', course_id=course.id, lesson_index=lesson_index + 1) }}"
+                               class="btn btn-outline">🧪 Следующий тест →</a>
+                        {% else %}
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-success btn-block">
+                                🎉 Курс завершён!
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

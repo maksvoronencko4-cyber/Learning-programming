@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Чат с {{ other_user.username }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="chat-container">
+        <div class="chat-header">
+            <a href="{{ url_for('chat_list') }}" class="btn btn-outline btn-sm">← Назад</a>
+            <div class="chat-header-user">
+                <div class="avatar-sm {% if is_online %}avatar-online{% endif %}">
+                    {{ other_user.username[0].upper() }}
+                </div>
+                <div>
+                    <a href="{{ url_for('view_user_profile', user_id=other_user.id) }}"
+                       class="chat-header-name">{{ other_user.username }}</a>
+                    <div class="online-status {% if is_online %}online{% else %}offline{% endif %}"
+                         id="user-status">
+                        {% if is_online %}В сети{% else %}Не в сети{% endif %}
+                    </div>
+                </div>
+            </div>
+            <a href="{{ url_for('view_user_profile', user_id=other_user.id) }}"
+               class="btn btn-outline btn-sm">Профиль</a>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            {% for msg in messages %}
+            <div class="chat-message {% if msg.sender_id == current_user.id %}msg-own{% else %}msg-other{% endif %}">
+                <div class="msg-content">{{ msg.content }}</div>
+                <div class="msg-time">{{ msg.created_at.strftime('%H:%M') }}</div>
+            </div>
+            {% endfor %}
+
+            {% if not messages %}
+            <div class="chat-empty">
+                <p>Напишите первое сообщение! 👋</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="typing-indicator" id="typing-indicator" style="display: none;">
+            {{ other_user.username }} печатает...
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="message-input" class="chat-input"
+                   placeholder="Написать сообщение..." autocomplete="off" maxlength="2000">
+            <button id="send-btn" class="btn btn-primary">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var receiverId = {{ other_user.id }};
+    var currentUserId = {{ current_user.id }};
+    var chatMessages = document.getElementById('chat-messages');
+    var messageInput = document.getElementById('message-input');
+    var sendBtn = document.getElementById('send-btn');
+    var typingIndicator = document.getElementById('typing-indicator');
+    var typingTimeout = null;
+
+    // Прокрутка вниз при загрузке
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Эта функция вызывается из base.html когда приходит сообщение
+    function handleNewMessage(data) {
+        if (data.sender_id !== receiverId && data.sender_id !== currentUserId) {
+            return;
+        }
+
+        // Удаляем заглушку "Напишите первое сообщение"
+        var emptyMsg = chatMessages.querySelector('.chat-empty');
+        if (emptyMsg) {
+            emptyMsg.remove();
+        }
+
+        var msgDiv = document.createElement('div');
+        if (data.sender_id === currentUserId) {
+            msgDiv.className = 'chat-message msg-own';
+        } else {
+            msgDiv.className = 'chat-message msg-other';
+        }
+
+        var contentDiv = document.createElement('div');
+        contentDiv.className = 'msg-content';
+        contentDiv.textContent = data.content;
+
+        var timeDiv = document.createElement('div');
+        timeDiv.className = 'msg-time';
+        timeDiv.textContent = data.created_at;
+
+        msgDiv.appendChild(contentDiv);
+        msgDiv.appendChild(timeDiv);
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        typingIndicator.style.display = 'none';
+    }
+
+    function sendMessage() {
+        var content = messageInput.value.trim();
+        if (!content) {
+            return;
+        }
+
+        socket.emit('send_message', {
+            receiver_id: receiverId,
+            content: content
+        });
+
+        messageInput.value = '';
+        messageInput.focus();
+    }
+
+    sendBtn.addEventListener('click', function() {
+        sendMessage();
+    });
+
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        } else {
+            socket.emit('typing', { receiver_id: receiverId });
+        }
+    });
+
+    socket.on('user_typing', function(data) {
+        if (data.user_id === receiverId) {
+            typingIndicator.style.display = 'block';
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(function() {
+                typingIndicator.style.display = 'none';
+            }, 2000);
+        }
+    });
+
+    socket.on('user_online', function(data) {
+        if (data.user_id === receiverId) {
+            var status = document.getElementById('user-status');
+            status.className = 'online-status online';
+            status.textContent = 'В сети';
+        }
+    });
+
+    socket.on('user_offline', function(data) {
+        if (data.user_id === receiverId) {
+            var status = document.getElementById('user-status');
+            status.className = 'online-status offline';
+            status.textContent = 'Не в сети';
+        }
+    });
+</script>
+{% endblock %}

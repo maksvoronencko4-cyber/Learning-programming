@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }} — {{ course.title }} — CodeLearn{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="lesson-layout">
+
+        <!-- SIDEBAR -->
+        <div class="lesson-sidebar">
+            <h3>{{ course.icon }} {{ course.title }}</h3>
+            <ul class="lesson-list">
+                {% for l in course.lessons %}
+                <li>
+                    <a href="{{ url_for('lesson', course_id=course.id, lesson_index=loop.index0) }}"
+                       class="{% if loop.index0 == lesson_index %}active{% endif %} {% if loop.index0 in completed_list %}completed{% endif %}">
+                        <span class="lesson-status {% if loop.index0 in completed_list %}done{% elif loop.index0 == lesson_index %}current{% endif %}">
+                            {% if loop.index0 in completed_list %}✓{% else %}{{ loop.index }}{% endif %}
+                        </span>
+                        {{ l.title }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="lesson-content">
+            <div class="lesson-breadcrumb">
+                {{ course.icon }} {{ course.title }} → Урок {{ lesson_index + 1 }} из {{ total_lessons }}
+                {% if is_completed %}
+                    <span style="color: var(--success); margin-left: 0.5rem;">✅ Пройден</span>
+                {% endif %}
+            </div>
+
+            <h2>{{ lesson.title }}</h2>
+
+            <div class="theory-section">
+                {{ lesson.theory | safe }}
+            </div>
+
+            <!-- TASK -->
+            <div class="task-section">
+                <h3>🎯 Задание</h3>
+                <p class="task-description">{{ lesson.task }}</p>
+
+                <form method="POST" class="answer-form">
+                    <input type="text" name="answer" class="answer-input"
+                           placeholder="Ваш ответ..."
+                           value="{{ user_answer }}"
+                           autocomplete="off">
+                    <button type="submit" class="btn btn-primary">Проверить</button>
+                </form>
+
+                {% if result == 'correct' %}
+                    <div class="result result-correct">
+                        ✅ Правильно! Отличная работа!
+                    </div>
+                {% elif result == 'wrong' %}
+                    <div class="result result-wrong">
+                        ❌ Неверно. Попробуйте ещё раз!
+                    </div>
+                {% endif %}
+
+                <button onclick="toggleHint()" class="hint-toggle">💡 Показать подсказку</button>
+                <div id="hint-text" class="hint-text">
+                    {{ lesson.hint }}
+                </div>
+            </div>
+
+            <!-- NAVIGATION -->
+            <div class="lesson-nav">
+                {% if lesson_index > 0 %}
+                    <a href="{{ url_for('lesson', course_id=course.id, lesson_index=lesson_index - 1) }}"
+                       class="btn btn-outline">← Предыдущий</a>
+                {% else %}
+                    <div></div>
+                {% endif %}
+
+                {% if lesson_index < total_lessons - 1 %}
+                    <a href="{{ url_for('lesson', course_id=course.id, lesson_index=lesson_index + 1) }}"
+                       class="btn btn-primary">Следующий →</a>
+                {% else %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-success">Завершить курс 🎉</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

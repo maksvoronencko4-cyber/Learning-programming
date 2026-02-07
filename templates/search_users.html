@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Поиск людей — CodeLearn{% endblock %}
+{% block content %}
+<div class="container">
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('friends') }}" class="btn btn-outline btn-sm">← Друзья</a>
+    </div>
+
+    <h1>🔍 Найти людей</h1>
+
+    <form method="POST" class="search-form">
+        <input type="text" name="query" class="search-input" placeholder="Введите имя пользователя..."
+               value="{{ query }}" minlength="2" required autocomplete="off">
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </form>
+
+    {% if query %}
+    <div class="search-results">
+        <p class="results-count">
+            {% if results %}
+                Найдено: {{ results|length }}
+            {% else %}
+                Никого не найдено по запросу "{{ query }}"
+            {% endif %}
+        </p>
+
+        {% for user in results %}
+        <div class="user-card">
+            <div class="user-card-info">
+                <div class="avatar-sm">{{ user.username[0].upper() }}</div>
+                <div>
+                    <a href="{{ url_for('view_user_profile', user_id=user.id) }}"
+                       class="user-card-name">{{ user.username }}</a>
+                    <div class="user-card-date">На сайте с {{ user.created_at.strftime('%d.%m.%Y') }}</div>
+                </div>
+            </div>
+
+            <div class="user-card-action">
+                {% if current_user.is_friend(user) %}
+                    <span class="status-text status-friend">✅ В друзьях</span>
+                {% elif current_user.has_sent_request_to(user) %}
+                    <span class="status-text status-pending">⏳ Запрос отправлен</span>
+                {% elif current_user.has_request_from(user) %}
+                    <a href="{{ url_for('send_friend_request', user_id=user.id) }}"
+                       class="btn btn-success btn-sm">Принять запрос</a>
+                {% else %}
+                    <a href="{{ url_for('send_friend_request', user_id=user.id) }}"
+                       class="btn btn-primary btn-sm">Добавить в друзья</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

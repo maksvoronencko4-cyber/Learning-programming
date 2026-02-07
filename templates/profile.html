@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username }} — CodeLearn{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="profile-header">
+        <div class="profile-avatar {% if is_online %}avatar-online{% endif %}">
+            {{ profile_user.username[0].upper() }}
+        </div>
+        <h1>{{ profile_user.username }}</h1>
+        {% if is_own %}
+            <p style="color: var(--text-muted);">{{ profile_user.email }}</p>
+        {% endif %}
+        <span class="online-status {% if is_online %}online{% else %}offline{% endif %}">
+            {{ "В сети" if is_online else "Не в сети" }}
+        </span>
+
+        {% if not is_own %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if is_friend %}
+                <a href="{{ url_for('chat', user_id=profile_user.id) }}" class="btn btn-primary btn-sm">💬 Написать</a>
+                <a href="{{ url_for('remove_friend', user_id=profile_user.id) }}"
+                   class="btn btn-outline btn-sm"
+                   onclick="return confirm('Удалить из друзей?')">Удалить из друзей</a>
+            {% elif has_sent %}
+                <span class="status-text status-pending">⏳ Запрос отправлен</span>
+            {% elif has_received %}
+                <a href="{{ url_for('send_friend_request', user_id=profile_user.id) }}"
+                   class="btn btn-success btn-sm">Принять запрос</a>
+            {% else %}
+                <a href="{{ url_for('send_friend_request', user_id=profile_user.id) }}"
+                   class="btn btn-primary btn-sm">Добавить в друзья</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_completed }}</div>
+            <div class="stat-label">📖 Уроков</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_passed }}</div>
+            <div class="stat-label">🧪 Тестов</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_lessons }}</div>
+            <div class="stat-label">📚 Всего</div>
+        </div>
+    </div>
+
+    <h2 class="section-title" style="font-size: 1.5rem;">Прогресс по курсам</h2>
+
+    <div class="course-grid" style="margin-top: 1rem;">
+        {% for item in stats %}
+        <div class="card">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <span style="font-size: 2rem;">{{ item.course.icon }}</span>
+                <h3>{{ item.course.title }}</h3>
+            </div>
+            <div class="profile-course-stats">
+                <div>
+                    <span>📖 Уроки: {{ item.completed }}/{{ item.total }}</span>
+                    <div class="progress-bar" style="margin-top: 0.25rem;">
+                        <div class="progress-fill" style="width: {{ item.percent }}%"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <span>🧪 Тесты: {{ item.passed_tests }}/{{ item.total }}</span>
+                    <div class="progress-bar" style="margin-top: 0.25rem;">
+                        <div class="progress-fill" style="width: {{ item.test_percent }}%; background: linear-gradient(90deg, #00c853, #69f0ae);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

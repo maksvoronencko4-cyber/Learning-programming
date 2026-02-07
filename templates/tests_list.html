@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Тесты — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline btn-sm">← Назад</a>
+    </div>
+
+    <h1>{{ course.icon }} {{ course.title }} — Тесты</h1>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">
+        Проверьте свои знания по каждому уроку
+    </p>
+
+    <div class="tests-grid">
+        {% for lesson in course.lessons %}
+        <div class="test-card {% if loop.index0 in passed_list %}test-passed{% endif %}">
+            <div class="test-card-header">
+                <span class="test-number">
+                    {% if loop.index0 in passed_list %}✅{% else %}{{ loop.index }}{% endif %}
+                </span>
+                <div>
+                    <h3>{{ lesson.title }}</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        {{ lesson.questions|length }} вопросов
+                    </p>
+                </div>
+            </div>
+
+            <div class="test-card-status">
+                {% if loop.index0 in passed_list %}
+                    <span style="color: var(--success);">Пройден ✓</span>
+                {% elif loop.index0 in completed_list %}
+                    <span style="color: var(--warning);">Урок прочитан</span>
+                {% else %}
+                    <span style="color: var(--text-muted);">Не начат</span>
+                {% endif %}
+            </div>
+
+            <div class="test-card-actions">
+                {% if loop.index0 not in completed_list %}
+                    <a href="{{ url_for('learn', course_id=course.id, lesson_index=loop.index0) }}"
+                       class="btn btn-outline btn-sm btn-block">📖 Сначала изучить</a>
+                {% endif %}
+                <a href="{{ url_for('test', course_id=course.id, lesson_index=loop.index0) }}"
+                   class="btn btn-primary btn-sm btn-block">
+                    {% if loop.index0 in passed_list %}Пройти заново{% else %}Пройти тест{% endif %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <p style="color: var(--text-muted);">
+            Пройдено: {{ passed_list|length }} / {{ course.lessons|length }} тестов
+        </p>
+        <div class="progress-bar" style="max-width: 400px; margin: 0.5rem auto;">
+            <div class="progress-fill" style="width: {{ (passed_list|length / course.lessons|length * 100)|int }}%"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
