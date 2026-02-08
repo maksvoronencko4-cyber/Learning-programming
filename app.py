@@ -2,34 +2,26 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
 from models import db, User, UserProgress, FriendRequest, Message
 from lessons_data import get_course, get_all_courses, get_lesson
 
 app = Flask(__name__)
 
-# Конфигурация
+# Database config
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///codelearn.db')
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Инициализация
 db.init_app(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Войдите в аккаунт'
-login_manager.login_message_category = 'info'
-
-online_users = {}
 
 
 @login_manager.user_loader
@@ -41,7 +33,7 @@ with app.app_context():
     db.create_all()
 
 
-# ========== СТРАНИЦЫ ==========
+# ========== ROUTES ==========
 
 @app.route('/')
 def index():
@@ -62,20 +54,11 @@ def register():
         if not username or not email or not password:
             flash('Заполните все поля', 'error')
             return redirect(url_for('register'))
-        if len(username) < 3:
-            flash('Имя минимум 3 символа', 'error')
-            return redirect(url_for('register'))
-        if len(password) < 6:
-            flash('Пароль минимум 6 символов', 'error')
-            return redirect(url_for('register'))
         if password != confirm:
             flash('Пароли не совпадают', 'error')
             return redirect(url_for('register'))
         if User.query.filter_by(username=username).first():
             flash('Имя занято', 'error')
-            return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first():
-            flash('Email занят', 'error')
             return redirect(url_for('register'))
 
         user = User(
@@ -105,7 +88,7 @@ def login():
         if user and bcrypt.check_password_hash(user.password_hash, password):
             login_user(user, remember=True)
             flash('С возвращением!', 'success')
-            return redirect(request.args.get('next') or url_for('dashboard'))
+            return redirect(url_for('dashboard'))
         flash('Неверные данные', 'error')
 
     return render_template('login.html')
@@ -115,7 +98,6 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Вы вышли', 'info')
     return redirect(url_for('index'))
 
 
@@ -151,19 +133,15 @@ def courses():
     return render_template('courses.html', courses=get_all_courses(), progress=progress)
 
 
-# ========== ОБУЧЕНИЕ ==========
-
 @app.route('/learn/<course_id>/<int:lesson_index>')
 @login_required
 def learn(course_id, lesson_index):
     course = get_course(course_id)
     if not course:
-        flash('Курс не найден', 'error')
         return redirect(url_for('courses'))
 
     lesson = get_lesson(course_id, lesson_index)
     if not lesson:
-        flash('Урок не найден', 'error')
         return redirect(url_for('courses'))
 
     progress = current_user.get_course_progress(course_id)
@@ -192,7 +170,6 @@ def test(course_id, lesson_index):
     course = get_course(course_id)
     lesson = get_lesson(course_id, lesson_index)
     if not course or not lesson:
-        flash('Не найдено', 'error')
         return redirect(url_for('courses'))
 
     questions = lesson.get('questions', [])
@@ -225,7 +202,7 @@ def test(course_id, lesson_index):
             flash('Тест пройден!', 'success')
         else:
             result = 'fail'
-            flash('Попробуйте ещё раз', 'error')
+            flash('Попробуйте ещё', 'error')
 
     return render_template(
         'test.html',
@@ -258,8 +235,6 @@ def tests_list(course_id):
     )
 
 
-# ========== ДРУЗЬЯ ==========
-
 @app.route('/friends')
 @login_required
 def friends():
@@ -276,7 +251,7 @@ def friends():
             'total_completed': completed,
             'total_passed': passed,
             'unread': current_user.get_unread_from(f.id),
-            'is_online': f.id in online_users
+            'is_online': False
         })
 
     return render_template(
@@ -360,11 +335,8 @@ def remove_friend(user_id):
     if current_user.is_friend(user):
         current_user.remove_friend(user)
         db.session.commit()
-        flash('Удалён из друзей', 'info')
     return redirect(url_for('friends'))
 
-
-# ========== ЧАТ ==========
 
 @app.route('/chat_list')
 @login_required
@@ -382,7 +354,7 @@ def chat_list():
             'user': f,
             'last_message': last,
             'unread': current_user.get_unread_from(f.id),
-            'is_online': f.id in online_users
+            'is_online': False
         })
 
     chats.sort(
@@ -392,7 +364,7 @@ def chat_list():
     return render_template('chat_list.html', chats=chats)
 
 
-@app.route('/chat/<int:user_id>')
+@app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def chat(user_id):
     other = User.query.get_or_404(user_id)
@@ -401,15 +373,20 @@ def chat(user_id):
         flash('Можно писать только друзьям', 'error')
         return redirect(url_for('friends'))
 
-    try:
-        Message.query.filter_by(
-            sender_id=user_id,
-            receiver_id=current_user.id,
-            is_read=False
-        ).update({'is_read': True})
-        db.session.commit()
-    except:
-        db.session.rollback()
+    if request.method == 'POST':
+        content = request.form.get('message', '').strip()
+        if content:
+            msg = Message(sender_id=current_user.id, receiver_id=user_id, content=content[:2000])
+            db.session.add(msg)
+            db.session.commit()
+        return redirect(url_for('chat', user_id=user_id))
+
+    Message.query.filter_by(
+        sender_id=user_id,
+        receiver_id=current_user.id,
+        is_read=False
+    ).update({'is_read': True})
+    db.session.commit()
 
     messages = Message.query.filter(
         db.or_(
@@ -418,15 +395,8 @@ def chat(user_id):
         )
     ).order_by(Message.created_at.asc()).limit(200).all()
 
-    return render_template(
-        'chat.html',
-        other_user=other,
-        messages=messages,
-        is_online=user_id in online_users
-    )
+    return render_template('chat.html', other_user=other, messages=messages, is_online=False)
 
-
-# ========== ПРОФИЛЬ ==========
 
 @app.route('/profile')
 @login_required
@@ -479,68 +449,10 @@ def show_profile(uid):
         is_friend=current_user.is_friend(user) if not is_own else False,
         has_sent=current_user.has_sent_request_to(user) if not is_own else False,
         has_received=current_user.has_request_from(user) if not is_own else False,
-        is_online=user.id in online_users
+        is_online=False
     )
 
 
-# ========== СОКЕТЫ ==========
-
-@socketio.on('connect')
-def on_connect():
-    if current_user.is_authenticated:
-        online_users[current_user.id] = request.sid
-        join_room('user_' + str(current_user.id))
-        try:
-            for f in current_user.get_friends_list():
-                if f.id in online_users:
-                    emit('user_online', {'user_id': current_user.id}, room='user_' + str(f.id))
-        except:
-            pass
-
-
-@socketio.on('disconnect')
-def on_disconnect():
-    if current_user.is_authenticated:
-        online_users.pop(current_user.id, None)
-        try:
-            for f in current_user.get_friends_list():
-                if f.id in online_users:
-                    emit('user_offline', {'user_id': current_user.id}, room='user_' + str(f.id))
-        except:
-            pass
-
-
-@socketio.on('send_message')
-def on_message(data):
-    if not current_user.is_authenticated:
-        return
-
-    try:
-        rid = data.get('receiver_id')
-        content = data.get('content', '').strip()[:2000]
-        if not content or not rid:
-            return
-
-        msg = Message(sender_id=current_user.id, receiver_id=rid, content=content)
-        db.session.add(msg)
-        db.session.commit()
-
-        payload = msg.to_dict()
-        emit('new_message', payload, room='user_' + str(current_user.id))
-        if rid in online_users:
-            emit('new_message', payload, room='user_' + str(rid))
-    except:
-        db.session.rollback()
-
-
-@socketio.on('typing')
-def on_typing(data):
-    if not current_user.is_authenticated:
-        return
-    rid = data.get('receiver_id')
-    if rid and rid in online_users:
-        emit('user_typing', {'user_id': current_user.id}, room='user_' + str(rid))
-
-
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
