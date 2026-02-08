@@ -1,12 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Мои курсы — CodeLearn{% endblock %}
+{% block title %}Мои курсы{% endblock %}
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 0.5rem;">Мои курсы</h1>
-    <p style="color: var(--text-muted); margin-bottom: 2rem;">
-        Изучайте теорию и проходите тесты
-    </p>
-
+    <h1>Мои курсы</h1>
     <div class="course-grid">
         {% for item in course_data %}
         <div class="course-card" style="--course-color: {{ item.course.color }}">
@@ -17,31 +13,17 @@
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: {{ item.percent }}%"></div>
                 </div>
-
                 <div class="dashboard-stats">
-                    <div class="dashboard-stat">
-                        <span class="stat-icon">📖</span>
-                        <span>{{ item.completed_lessons }}/{{ item.total }} уроков</span>
-                    </div>
-                    <div class="dashboard-stat">
-                        <span class="stat-icon">🧪</span>
-                        <span>{{ item.passed_tests }}/{{ item.total }} тестов</span>
-                    </div>
+                    <span>📖 {{ item.completed_lessons }}/{{ item.total }}</span>
+                    <span>🧪 {{ item.passed_tests }}/{{ item.total }}</span>
                 </div>
-
                 <div class="dashboard-buttons">
-                    <a href="{{ url_for('learn', course_id=item.course.id, lesson_index=item.current_lesson) }}"
-                       class="btn btn-primary btn-sm">📖 Изучать</a>
-                    <a href="{{ url_for('tests_list', course_id=item.course.id) }}"
-                       class="btn btn-outline btn-sm">🧪 Тесты</a>
+                    <a href="{{ url_for('learn', course_id=item.course.id, lesson_index=item.current_lesson) }}" class="btn btn-primary btn-sm">Продолжить</a>
+                    <a href="{{ url_for('tests_list', course_id=item.course.id) }}" class="btn btn-outline btn-sm">Тесты</a>
                 </div>
             {% else %}
                 <p>{{ item.course.description }}</p>
-                <div class="course-meta">
-                    <span class="progress-text">{{ item.total }} уроков</span>
-                    <a href="{{ url_for('learn', course_id=item.course.id, lesson_index=0) }}"
-                       class="btn btn-primary btn-sm">Начать</a>
-                </div>
+                <a href="{{ url_for('learn', course_id=item.course.id, lesson_index=0) }}" class="btn btn-primary btn-sm">Начать</a>
             {% endif %}
         </div>
         {% endfor %}
