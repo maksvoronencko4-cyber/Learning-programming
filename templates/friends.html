@@ -1,85 +1,62 @@
 {% extends "base.html" %}
-{% block title %}Друзья — CodeLearn{% endblock %}
+{% block title %}Друзья{% endblock %}
 {% block content %}
 <div class="container">
     <div class="friends-header">
         <h1>👥 Друзья</h1>
-        <a href="{{ url_for('search_users') }}" class="btn btn-primary">🔍 Найти людей</a>
+        <a href="{{ url_for('search_users') }}" class="btn btn-primary">🔍 Найти</a>
     </div>
 
     {% if pending %}
     <div class="section-block">
-        <h2 class="section-label">📨 Входящие запросы ({{ pending|length }})</h2>
-        <div class="requests-list">
-            {% for req in pending %}
-            <div class="request-card">
-                <div class="request-info">
-                    <div class="avatar-sm">{{ req.from_user.username[0].upper() }}</div>
-                    <div>
-                        <a href="{{ url_for('view_user_profile', user_id=req.from_user.id) }}"
-                           class="request-name">{{ req.from_user.username }}</a>
-                        <div class="request-date">{{ req.created_at.strftime('%d.%m.%Y') }}</div>
-                    </div>
-                </div>
-                <div class="request-actions">
-                    <a href="{{ url_for('accept_request', request_id=req.id) }}"
-                       class="btn btn-success btn-sm">Принять</a>
-                    <a href="{{ url_for('reject_request', request_id=req.id) }}"
-                       class="btn btn-outline btn-sm">Отклонить</a>
-                </div>
+        <h2 class="section-label">📨 Запросы ({{ pending|length }})</h2>
+        {% for req in pending %}
+        <div class="request-card">
+            <div class="request-info">
+                <div class="avatar-sm">{{ req.from_user.username[0].upper() }}</div>
+                <a href="{{ url_for('view_user_profile', user_id=req.from_user.id) }}">{{ req.from_user.username }}</a>
             </div>
-            {% endfor %}
+            <div class="request-actions">
+                <a href="{{ url_for('accept_request', req_id=req.id) }}" class="btn btn-success btn-sm">Принять</a>
+                <a href="{{ url_for('reject_request', req_id=req.id) }}" class="btn btn-outline btn-sm">Отклонить</a>
+            </div>
         </div>
+        {% endfor %}
     </div>
     {% endif %}
 
-    <div class="section-block">
-        <h2 class="section-label">Мои друзья ({{ friends_data|length }})</h2>
-
-        {% if friends_data %}
-        <div class="friends-grid">
-            {% for fd in friends_data %}
-            <div class="friend-card">
-                <div class="friend-card-top">
-                    <div class="avatar-md {% if fd.is_online %}avatar-online{% endif %}">
-                        {{ fd.user.username[0].upper() }}
-                    </div>
-                    <div class="friend-info">
-                        <a href="{{ url_for('view_user_profile', user_id=fd.user.id) }}"
-                           class="friend-name">{{ fd.user.username }}</a>
-                        <span class="online-status {% if fd.is_online %}online{% else %}offline{% endif %}">
-                            {{ "В сети" if fd.is_online else "Не в сети" }}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="friend-stats">
-                    <span>📖 {{ fd.total_completed }} уроков</span>
-                    <span>🧪 {{ fd.total_passed }} тестов</span>
-                </div>
-
-                <div class="friend-actions">
-                    <a href="{{ url_for('chat', user_id=fd.user.id) }}" class="btn btn-primary btn-sm">
-                        💬 Чат
-                        {% if fd.unread > 0 %}
-                            <span class="btn-badge">{{ fd.unread }}</span>
-                        {% endif %}
-                    </a>
-                    <a href="{{ url_for('remove_friend', user_id=fd.user.id) }}"
-                       class="btn btn-outline btn-sm"
-                       onclick="return confirm('Удалить из друзей?')">Удалить</a>
+    <div class="friends-grid">
+        {% for fd in friends_data %}
+        <div class="friend-card">
+            <div class="friend-card-top">
+                <div class="avatar-md {% if fd.is_online %}avatar-online{% endif %}">{{ fd.user.username[0].upper() }}</div>
+                <div>
+                    <a href="{{ url_for('view_user_profile', user_id=fd.user.id) }}" class="friend-name">{{ fd.user.username }}</a>
+                    <span class="online-status {% if fd.is_online %}online{% else %}offline{% endif %}">
+                        {% if fd.is_online %}В сети{% else %}Не в сети{% endif %}
+                    </span>
                 </div>
             </div>
-            {% endfor %}
+            <div class="friend-stats">
+                <span>📖 {{ fd.total_completed }}</span>
+                <span>🧪 {{ fd.total_passed }}</span>
+            </div>
+            <div class="friend-actions">
+                <a href="{{ url_for('chat', user_id=fd.user.id) }}" class="btn btn-primary btn-sm">
+                    💬 {% if fd.unread > 0 %}<span class="btn-badge">{{ fd.unread }}</span>{% endif %}
+                </a>
+                <a href="{{ url_for('remove_friend', user_id=fd.user.id) }}" class="btn btn-outline btn-sm">Удалить</a>
+            </div>
         </div>
-        {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">👥</div>
-            <h3>Пока нет друзей</h3>
-            <p>Найдите других учеников и учитесь вместе!</p>
-            <a href="{{ url_for('search_users') }}" class="btn btn-primary">Найти людей</a>
-        </div>
-        {% endif %}
+        {% endfor %}
     </div>
+
+    {% if not friends_data and not pending %}
+    <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h3>Пока нет друзей</h3>
+        <a href="{{ url_for('search_users') }}" class="btn btn-primary">Найти людей</a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
